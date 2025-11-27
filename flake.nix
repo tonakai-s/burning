@@ -11,6 +11,13 @@
       pkgs = nixpkgs.legacyPackages."x86_64-linux";
     in
     {
+      packages."x86_64-linux".default = pkgs.rustPlatform.buildRustPackages {
+        name = "burning";
+        src = ./.;
+        buildInputs = [ pkgs.glib ];
+        nativeBuildInputs = [ pkgs.pkg-config ];
+        cargoLock.lockFile = ./Cargo.lock;
+      };
       devShells."x86_64-linux".default = pkgs.mkShell {
         buildInputs = with pkgs; [
           cargo
