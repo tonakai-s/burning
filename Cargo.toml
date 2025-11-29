@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+actix-files = "0.6.9"
+actix-web = "4.12.1"
 tungstenite = "0.28.0"
