@@ -22,7 +22,7 @@ use actix_web::{web, App, HttpServer, HttpRequest};
 use actix_files::NamedFile;
 use std::path::PathBuf;
 
-async fn index(req: HttpRequest) -> actix_web::Result<NamedFile> {
+async fn index(_req: HttpRequest) -> actix_web::Result<NamedFile> {
     let path: PathBuf = "index.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }

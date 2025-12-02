@@ -2,9 +2,21 @@ let socket = undefined;
 let pingInterval = undefined;
 const btn = document.getElementById("myButton");
 btn.addEventListener('click', ev => {
-	browser.tabs.create({ url: 'burning.html' });
+
+    browser.tabs.create({ url: 'burning.html' });
 });
 
+// In your content-script.js
+console.log("starting ext")
+
+window.addEventListener("message", (event) => {
+    console.log("Content script received message: \"" + event.data.message + "\"");
+  if (event.source == window &&
+      event.data &&
+      event.data.direction == "from-page-script") {
+    console.log("Content script received message: \"" + event.data.message + "\"");
+  }
+});
 
 //socket = new WebSocket("ws://127.0.0.1:9001");
 //socket.addEventListener("open", () => {
