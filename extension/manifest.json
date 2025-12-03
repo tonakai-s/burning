@@ -2,19 +2,14 @@
     "manifest_version": 3,
     "name": "Button Listener Example",
     "version": "1.0",
-    "action": {
-        "default_popup": "popup.html",
-        "default_title": "Button Listener"
-    },
     "background": {
         "scripts": ["background.js"]
     },
-    "permissions": [],
+    "permissions": ["tabs", "scripting"],
     "content_scripts": [
         {
-            "matches": ["http://127.0.0.1:8080/*"],
-            "js": ["content-script.js"],
-            "all_frames": true
+            "matches": ["<all_urls>"],
+            "js": ["content-script.js"]
         }
     ]
 }
