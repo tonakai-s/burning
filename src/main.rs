@@ -1,38 +1,61 @@
-use std::net::TcpListener;
-use std::thread::spawn;
-use tungstenite::accept;
-
-//fn main () {
-    //let server = TcpListener::bind("127.0.0.1:9001").unwrap();
-    //for stream in server.incoming() {
-    //    spawn (move || {
-    //        let mut websocket = accept(stream.unwrap()).unwrap();
-    //        println!("socket connected");
-    //        loop {
-    //            let msg = websocket.read().unwrap();
-
-    //            if msg.is_binary() || msg.is_text() {
-    //                websocket.send(msg).unwrap();
-    //            }
-    //        }
-    //    });
-    //}
-//}
-use actix_web::{web, App, HttpServer, HttpRequest};
+use actix_sse::Data;
+use futures_util::lock::Mutex;
+use notify::{RecursiveMode, Watcher};
+use actix_web::{get, App, HttpRequest, HttpServer, Responder, web};
 use actix_files::NamedFile;
-use std::path::PathBuf;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use std::{path::PathBuf, time::Duration};
 
 async fn index(_req: HttpRequest) -> actix_web::Result<NamedFile> {
     let path: PathBuf = "index.html".parse().unwrap();
     Ok(NamedFile::open(path)?)
 }
 
+struct AppState {
+    clients: Mutex::<Vec<mpsc::Sender<actix_sse::Event>>>,
+
+}
+
+#[get("/sse")]
+async fn sse_handler(app_state: web::Data<AppState>) -> impl Responder {
+    println!("SSE Connection received");
+    let (tx, rx) = mpsc::channel(10);
+
+    app_state.clients.lock().await.push(tx.clone());
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let _ = tx.send(actix_sse::Event::Comment("my comment".into())).await;
+    match tx
+        .send(actix_sse::Data::new("my data").event("chat_msg").into())
+        .await {
+            Ok(()) => println!("Message sent"),
+            Err(err) => println!("Error sending the message: {:?}", err)
+        }
+
+    let event_stream = ReceiverStream::new(rx);
+    actix_sse::Sse::from_infallible_stream(event_stream)
+        .with_retry_duration(Duration::from_secs(5))
+        .with_keep_alive(Duration::from_secs(15))
+}
+
+async fn send_message_to_clients(sender: &mpsc::Sender<actix_sse::Event>, message: String) {
+    let event = Data::new(message).event("message").into();
+    let _ = sender.send(event).await;
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new().route("/", web::get().to(index)).service(actix_files::Files::new("/static", "./public"))
+    let app_state = web::Data::new(AppState { clients: Mutex::new(vec![]) } );
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(app_state.clone())
+            .route("/", web::get().to(index))
+            .service(sse_handler)
+            .service(actix_files::Files::new("/static", "./public"))
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("127.0.0.1", 8081))?
         .run()
     .await
 }
