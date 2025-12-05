@@ -11,4 +11,8 @@ setTimeout(() => {
     evtSource.addEventListener("chat_msg", (ev) => {
         console.log("New event: ", ev);
     });
+    evtSource.addEventListener("file_content_modify", (ev) => {
+        console.log("New mod: ", ev);
+        window.postMessage({ from: "burning", action: "reload", target: "wikipedia.org" });
+    });
 }, 1000);
