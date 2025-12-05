@@ -7,8 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
     evtSource.addEventListener("ping", (ev) => {
         console.log("ping", ev);
     });
-    evtSource.addEventListener("file_content_modify", (ev) => {
+    evtSource.addEventListener("reload_from_file", (ev) => {
         console.log("event: ", ev);
-        window.postMessage({ from: "burning", action: "reload", target: "wikipedia.org" });
+        window.postMessage({ from: "burning", action: "reload", target: ev.data });
     });
 });

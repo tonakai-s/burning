@@ -5,6 +5,18 @@ use actix_files::NamedFile;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use std::{path::PathBuf, time::Duration};
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// File or folder to be watched
+    #[arg(short, long)]
+    watch: String,
+    /// Tab URL target part
+    #[arg(short, long)]
+    target: String,
+}
 
 async fn index(_req: HttpRequest) -> actix_web::Result<NamedFile> {
     let path: PathBuf = "index.html".parse().unwrap(); Ok(NamedFile::open(path)?)
@@ -23,12 +35,12 @@ async fn sse_handler(app_state: web::Data<AppState>) -> impl Responder {
     println!("clients count: {:?}", app_state.clients.lock().await.len());
 
     tokio::time::sleep(Duration::from_secs(2)).await;
-    let _ = tx.send(actix_sse::Event::Comment("my comment".into())).await;
+    // let _ = tx.send(actix_sse::Event::Comment("my comment".into())).await;
     match tx
-        .send(actix_sse::Data::new("my data").event("chat_msg").into())
+        .send(actix_sse::Data::new("pong").event("ping").into())
         .await {
-            Ok(()) => println!("Message sent"),
-            Err(err) => println!("Error sending the message: {:?}", err)
+            Ok(()) => println!("ping sent"),
+            Err(err) => println!("error sending a start ping: {:?}", err)
         }
 
     let event_stream = ReceiverStream::new(rx);
@@ -37,20 +49,28 @@ async fn sse_handler(app_state: web::Data<AppState>) -> impl Responder {
         .with_keep_alive(Duration::from_secs(15))
 }
 
+// TODO: handle termination of the program
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let app_state = web::Data::new(AppState { clients: Mutex::new(vec![]) } );
+    let args = Args::parse();
+
+    let app_state = web::Data::new(
+        AppState {
+            clients: Mutex::new(vec![]),
+        }
+    );
 
     let web_state = app_state.clone();
     tokio::spawn(async move {
         let (tx, rx) = std::sync::mpsc::channel::<notify::Result<notify::Event>>();
 
-        let mut watcher = notify::recommended_watcher(tx).expect("unable to get a watcher");
+        let mut watcher = notify::recommended_watcher(tx).expect("unable to get a watcher, stop the program manually");
 
+        // TODO: The whole program need to stop when this king of error happen
         watcher.watch(
-            std::path::Path::new("./test.txt"),
+            std::path::Path::new(&args.watch),
             notify::RecursiveMode::Recursive
-        ).expect("unable to get a watcher");
+        ).expect("unable to get a watcher, stop the program manually");
 
         for res in rx {
             match res {
@@ -60,9 +80,10 @@ async fn main() -> std::io::Result<()> {
                             let clients = web_state.get_ref().clients.lock().await;
                             // TODO: remove disconnected clients
                             for c_tx in clients.iter() {
-                                let _ = c_tx.send(actix_sse::Event::Comment("my comment".into())).await;
+                                // let _ = c_tx.send(actix_sse::Event::Comment("my comment".into())).await;
                                 match c_tx
-                                    .send(actix_sse::Data::new("wikipedia.org").event("reload_from_file").into())
+                                    // TODO: is clone really needed?
+                                    .send(actix_sse::Data::new(args.target.clone()).event("reload_from_file").into())
                                 .await {
                                     Ok(()) => println!("modification notified"),
                                     Err(err) => {

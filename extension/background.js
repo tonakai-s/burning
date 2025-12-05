@@ -5,6 +5,7 @@ browser.runtime.onMessage.addListener(async (msg, sender) => {
     let tab = tabs.find(t => t.url.includes(msg.target));
     if(tab){
         await browser.tabs.reload(tab.id, { bypassCache: true });
+        // TODO: the message back to content script is failling
         await browser.tabs.sendMessage(sender.tab.id, "tab found and reload triggered");
     } else {
         await browser.tabs.sendMessage(sender.tab.id, "unable to found a tab with the provided target");
