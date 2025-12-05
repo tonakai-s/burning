@@ -20,6 +20,7 @@ async fn sse_handler(app_state: web::Data<AppState>) -> impl Responder {
     let (tx, rx) = mpsc::channel(10);
 
     app_state.clients.lock().await.push(tx.clone());
+    println!("clients count: {:?}", app_state.clients.lock().await.len());
 
     tokio::time::sleep(Duration::from_secs(2)).await;
     let _ = tx.send(actix_sse::Event::Comment("my comment".into())).await;
@@ -57,21 +58,23 @@ async fn main() -> std::io::Result<()> {
                     match event.kind {
                         notify::EventKind::Modify(ModifyKind::Data(_)) => {
                             let clients = web_state.get_ref().clients.lock().await;
-                            for c_tx in clients.iter(){
+                            // TODO: remove disconnected clients
+                            for c_tx in clients.iter() {
                                 let _ = c_tx.send(actix_sse::Event::Comment("my comment".into())).await;
                                 match c_tx
-                                    .send(actix_sse::Data::new("reload").event("file_content_modify").into())
+                                    .send(actix_sse::Data::new("wikipedia.org").event("reload_from_file").into())
                                 .await {
-                                    Ok(()) => println!("Message sent from modify"),
-                                    Err(err) => println!("Error sending the message: {:#?}", err)
+                                    Ok(()) => println!("modification notified"),
+                                    Err(err) => {
+                                        println!("error notificating the modification: {:#?}", err);
+                                    }
                                 }
                             }
                         }
                         _ => {}
                     }
-                    // println!("event: {:?}", event);
                 },
-                Err(err) => println!("watch error: {:?}", err),
+                Err(err) => println!("an error ocurred while watching the filesystem: {:?}", err),
             }
         }
     });
