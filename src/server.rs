@@ -22,7 +22,6 @@ async fn sse_handler(app_state: web::Data<AppState>) -> impl Responder {
     println!("clients count: {:?}", app_state.clients.lock().await.len());
 
     tokio::time::sleep(Duration::from_secs(2)).await;
-    // let _ = tx.send(actix_sse::Event::Comment("my comment".into())).await;
     match tx
         .send(actix_sse::Data::new("pong").event("ping").into())
         .await {

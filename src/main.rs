@@ -5,6 +5,7 @@ use burning::{args::Args, server::{self, AppState}, watcher};
 use clap::Parser;
 use tokio::sync::Mutex;
 
+// TODO: what if I use rouille instead tokio?
 // TODO: handle termination of the program
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
